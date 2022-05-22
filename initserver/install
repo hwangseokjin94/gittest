@@ -1,0 +1,281 @@
+#!/bin/sh
+
+CURRENTDIR=`pwd`
+clear
+
+#java was scouter web
+
+if [ $# -lt 1 ];then
+	printf "What do you want to do?\n\n"
+	printf "usage : ./install {all|web|java|scouter|was}\n\n\n"
+	exit
+fi
+
+if [[ "${1}" == "all" || "${1}" == "ALL" ]];then
+	OPT="web java was scouter"
+else
+	OPT=$@
+fi
+
+for arg in ${OPT}; do
+
+  case ${arg} in
+  	"web")
+  		printf "\n\n\n\n\n\n\n\n\n\n"
+  		printf "################################################################\n"
+  		printf " Apache Install\n"
+  		printf "################################################################\n"
+
+  		if [ ! -e ${CURRENTDIR}/httpd-2.4.53 ];then
+  			printf "Apache source not exist!\n"
+  			break
+  		fi
+
+  		read -p "Install Path (Default : /opt/apache-2.4.53) : " APACHE_DIR
+  		read -p "User  (Default : web) : " webUser
+
+			if [[ ${APACHE_DIR} == "" ]];then
+				APACHE_DIR="/opt/apache-2.4.53"
+			fi
+
+			if [[ ${webUser} == "" ]];then
+				webUser="was"
+			fi
+
+
+			#해당 계정이 없는 경우 생성!
+			usercnt=`cat /etc/passwd | grep ^"${webUser}:" | wc -l`
+			if [ ${usercnt} -lt 1 ];then
+				useradd ${webUser}
+			fi
+			
+
+			SHTEST=`uname -a | awk {'print $1'}`
+			GETBIT=`getconf LONG_BIT`
+
+			## Install Dependancy package
+			printf "##### Install Dependancy Package #####\n"
+			if [ "x$SHTEST" = "xLinux" ]; then
+
+				if [ "x$GETBIT" = "x64" ]; then
+					yum -y install file.x86_64
+					yum -y install lua.x86_64
+				else
+					yum -y install lua.i686
+				fi
+
+                                yum -y install expat-devel
+				yum -y install lua-devel
+				yum -y install openssl
+				yum -y install openssl-devel
+				yum -y install gcc
+
+				yum -y install gcc-c++
+				yum -y install libstdc++
+				yum -y install perl-libs
+				yum -y install openldap-devel
+
+				yum -y install zlib
+				yum -y install zlib-devel
+				yum -y install automake
+
+			fi
+			printf "\n\n"
+
+			APACHE_SRC=${CURRENTDIR}/httpd-2.4.53/src
+
+			printf "\n\n\n"
+			printf "##### Install EXT Modules #####\n"
+
+				cd ${APACHE_SRC}/EXTModule/apr-1.7.0
+				./configure --prefix=${APACHE_DIR}/EXT/apr-1.7.0 ; make ; make install
+
+
+				cd ${APACHE_SRC}/EXTModule/apr-util-1.6.1
+				./configure --prefix=${APACHE_DIR}/EXT/apr-util-1.6.1 --with-apr=${APACHE_DIR}/EXT/apr-1.7.0 --with-ldap --with-crypto --with-openssl=/usr/local/ssl ; make ; make install
+
+				cd ${APACHE_SRC}/EXTModule/pcre-8.45
+				./configure --prefix=${APACHE_DIR}/EXT/pcre-8.45 ; make ; make install
+
+
+			printf "\n\n\n"
+			printf "##### Install HTTPD #####\n"
+				cd ${APACHE_SRC}
+				./configure --prefix=${APACHE_DIR} --with-apr=${APACHE_DIR}/EXT/apr-1.7.0 --with-apr-util=${APACHE_DIR}/EXT/apr-util-1.6.1 --with-pcre=${APACHE_DIR}/EXT/pcre-8.45 --enable-rule=SHARED_CORE --enable-module=so --enable-so --enable-mods-shared=all --enable-nonportable-atomics=yes --enable-dav --enable-dav-fs --enable-rewrite --enable-cgi  --enable-ssl --enable-versioning --enable-headers --with-mpm=worker ; make ; make install
+
+			printf "\n\n\n"
+			printf "##### Install Connector #####\n"
+				cd ${APACHE_SRC}/EXTModule/tomcat-connectors-1.2.48-src/native
+				./configure --with-apxs=${APACHE_DIR}/bin/apxs ; make ; make install
+
+			printf "\n\n\n"
+			printf "##### Set HTTPD Configuration #####\n"
+				cd ${CURRENTDIR}/httpd-2.4.53
+				\cp -r conf ${APACHE_DIR}/.
+
+			printf "\n\n\n"
+			printf "##### Change Owner [${webUser}] #####\n"
+				chown -R ${webUser}:${webUser} ${APACHE_DIR}
+
+                        printf "#####  weakness remove ####\n"
+                             rm -f /opt/apache-2.4.53/modules/mod_lua.so
+                             rm -rf /opt/apache-2.4.53/htdocs
+                             rm -rf /opt/apache-2.4.53/cgi-bin
+                             rm -rf /opt/apache-2.4.53/icons
+                             rm -rf /opt/apache-2.4.53/manual
+                             mkdir -p /opt/apache-2.4.53/logs/default/modjk
+
+                        userCheck=`cat /etc/passwd | awk -F: '{print $1}' | grep -w web`
+
+                        if [ $userCheck != "web"  ];then
+                             echo "The server does not have a web account"
+                             adduser web
+                             chmod -R 750 /opt/apache-2.4.53
+                             chown -R web:web /opt/apache-2.4.53
+                             chmod -R 600  /opt/apache-2.4.53/conf
+                             chown root:web /opt/apache-2.4.53/bin/httpd
+                             chmod u+s /opt/apache-2.4.53/bin/httpd
+                             chmod 750 /opt/apache-2.4.53/conf/extra
+                             echo "end"
+                        fi
+
+                        if [ $userCheck == "web"  ];then
+                             echo "The server has a web account"
+                             chmod -R 750 /opt/apache-2.4.53
+                             chown -R web:web /opt/apache-2.4.53
+                             chmod -R 600  /opt/apache-2.4.53/conf
+                             chown root:web /opt/apache-2.4.53/bin/httpd
+                             chmod u+s /opt/apache-2.4.53/bin/httpd
+                             chmod 750 /opt/apache-2.4.53/conf/extra
+                             echo "end"
+                        fi
+
+  		;;
+
+
+
+  	"was")
+  		printf "\n\n\n\n\n\n\n\n\n\n"
+  		printf "################################################################\n"
+  		printf " JBOSS(wildfly) Install\n"
+  		printf "################################################################\n"
+  		if [ ! -e ${CURRENTDIR}/wildfly-11 ];then
+  			printf "Jboss(wildfly) package is not exist!\n"
+  			break
+  		fi
+
+  		cd ${CURRENTDIR}
+
+  		read -p "Install Path (Default : /opt/wildfly-11) : " jbossPath
+  		read -p "User  (Default : was) : " wasUser
+
+
+			if [[ ${jbossPath} == "" ]];then
+				jbossPath="/opt/wildfly-11"
+			fi
+
+			if [[ ${wasUser} == "" ]];then
+				wasUser="was"
+			fi
+
+
+			#해당 계정이 없는 경우 생성!
+			usercnt=`cat /etc/passwd | grep ^"${wasUser}:" | wc -l`
+			if [ ${usercnt} -lt 1 ];then
+				useradd ${wasUser}
+			fi
+
+			mkdir -p ${jbossPath}
+			printf "\n"
+
+			printf "##### Install JBOSS(wildfly)  #####\n"
+				mv ${CURRENTDIR}/wildfly-11/* ${jbossPath}/.
+				chown -R ${wasUser}:${wasUser} ${jbossPath}
+				
+
+			printf "\n.....Done\n"
+
+  		;;
+
+
+
+
+
+
+  	"java")
+  		printf "\n\n\n\n\n\n\n\n\n\n"
+  		printf "################################################################\n"
+  		printf " JAVA Install\n"
+  		printf "################################################################\n"
+  		if [ ! -e ${CURRENTDIR}/jdk-6u45-linux-x64-rpm.bin ];then
+  			printf "JDK package is not exist!\n"
+  			break
+  		fi
+  		cd ${CURRENTDIR}
+
+  		jdkFile=${CURRENTDIR}/jdk-6u45-linux-x64-rpm.bin
+  		chmod +x ${jdkFile}
+  		${jdkFile}
+  		printf "\n.....Done\n"
+  		;;
+
+
+
+
+
+
+  	"scouter")
+  		printf "\n\n\n\n\n\n\n\n\n\n"
+  		printf "################################################################\n"
+  		printf " SCOUTER Install\n"
+  		printf "################################################################\n"
+  		if [ ! -e ${CURRENTDIR}/scouter ];then
+  			printf "JDK package is not exist!\n"
+  			break
+  		fi
+  		cd ${CURRENTDIR}
+
+			read -p "Install Path (Default : /usr/local/scouter) : " scouterPath
+
+			if [[ ${scouterPath} == "" ]];then
+				scouterPath=/usr/local/scouter
+			fi
+			mkdir -p ${scouterPath}
+			printf "\n"
+
+			printf "##### Install SCOUTER Agent #####\n"
+				mv ${CURRENTDIR}/scouter/agent* ${scouterPath}
+				mv ${CURRENTDIR}/scouter/gather.sh ${scouterPath}
+
+				#chown to root
+				chown -R root:root ${scouterPath}
+
+				#agent.java 의 소유주를 was로 변경 (was 사용자가 있는 경우)
+				existWAS=`cat /etc/passwd | grep ^was | wc -l`
+				if [ ${existWAS} -gt 0 ];then
+					chown -R was:was ${scouterPath}/agent.java
+				fi
+
+				printf "\n"
+
+  		printf "##### Service registration - SCOUTER #####\n"
+	  		scouterService=/etc/init.d/scouter
+	  		mv ${CURRENTDIR}/scouter/scouter ${scouterService}
+	  		chown root:root ${scouterService}
+	  		chmod 755 ${scouterService}
+
+	  		chkconfig scouter --add
+	  		chkconfig scouter on
+  			printf "\n"
+
+  		printf "##### Service start - SCOUTER #####\n"
+  			service scouter start
+  			printf "\n.....Done\n"
+  		;;
+
+  	*)
+  		printf "${arg}.. What..?\n"
+  		;;
+  esac
+
+done

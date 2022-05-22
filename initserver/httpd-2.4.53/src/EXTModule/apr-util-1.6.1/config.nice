@@ -1,0 +1,11 @@
+#! /bin/sh
+#
+# Created by configure
+
+"./configure" \
+"--prefix=/opt/apache-2.4.53/EXT/apr-util-1.6.1" \
+"--with-apr=/opt/apache-2.4.53/EXT/apr-1.7.0" \
+"--with-ldap" \
+"--with-crypto" \
+"--with-openssl=/usr/local/ssl" \
+"$@"

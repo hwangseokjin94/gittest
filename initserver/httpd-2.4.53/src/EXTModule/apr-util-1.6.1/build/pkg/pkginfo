@@ -1,0 +1,11 @@
+PKG="ASFapu-1"
+NAME="apr-util"
+ARCH="x86_64"
+VERSION="1.6.1"
+CATEGORY="application"
+VENDOR="Apache Software Foundation"
+EMAIL="dev@apr.apache.org"
+PSTAMP="dev@apr.apache.org"
+BASEDIR="/opt/apache-2.4.53/EXT/apr-util-1.6.1"
+CLASSES="none"
+
